@@ -1,0 +1,28 @@
+name: Bootstrap Nocturne Apple Identifier
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: xcode-27
+    env:
+      FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+      FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+      FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate API credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in FASTLANE_KEY_ID FASTLANE_ISSUER_ID FASTLANE_KEY; do
+            test -n "${!name}" || { echo "::error::$name unavailable"; exit 1; }
+          done
+      - name: Install project dependencies
+        run: bundle install
+      - name: Create and verify App ID with HealthKit
+        run: bundle exec ruby scripts/bootstrap_nocturne_identifier.rb
