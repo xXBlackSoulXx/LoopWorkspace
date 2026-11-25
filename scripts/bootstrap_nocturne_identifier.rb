@@ -1,9 +1,9 @@
 require "spaceship"
 require "net/http"
 require "uri"
+require "json"
 
 identifier = "com.blacksoul697.nocturnehealth"
-healthkit = Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT
 
 token = Spaceship::ConnectAPI::Token.create(
   key_id: ENV.fetch("FASTLANE_KEY_ID"),
@@ -12,33 +12,65 @@ token = Spaceship::ConnectAPI::Token.create(
   in_house: false
 )
 
-# Verify that this is a Team key with provisioning access. Individual keys can
-# access apps/TestFlight but Apple rejects the bundleIds provisioning endpoint.
-def status_for(path, token)
+def request(method, path, token, body: nil)
   uri = URI("https://api.appstoreconnect.apple.com#{path}")
-  request = Net::HTTP::Get.new(uri)
-  request["Authorization"] = "Bearer #{token.text}"
-  Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(request) }.code.to_i
+  klass = { get: Net::HTTP::Get, post: Net::HTTP::Post }.fetch(method)
+  req = klass.new(uri)
+  req["Authorization"] = "Bearer #{token.text}"
+  req["Content-Type"] = "application/json"
+  req.body = JSON.generate(body) if body
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(req) }
+  [response.code.to_i, response.body]
 end
 
-apps_status = status_for("/v1/apps?limit=1", token)
-bundle_ids_status = status_for("/v1/bundleIds?limit=1", token)
-puts "App Store access status: #{apps_status}"
-puts "Provisioning access status: #{bundle_ids_status}"
-abort("The existing API key lacks Team provisioning access") unless bundle_ids_status == 200
+status, body = request(:get, "/v1/bundleIds?filter%5Bidentifier%5D=#{identifier}", token)
+abort("Unable to query bundle identifiers (HTTP #{status})") unless status == 200
+bundle_id = JSON.parse(body).fetch("data").first
 
-Spaceship::ConnectAPI.token = token
-bundle_id = Spaceship::ConnectAPI::BundleId.find(identifier)
-bundle_id ||= Spaceship::ConnectAPI::BundleId.create(
-  name: "Nocturne Health",
-  platform: "IOS",
-  identifier: identifier
-)
-
-bundle_id.update_capability(healthkit, enabled: true)
-capabilities = bundle_id.get_capabilities
-unless capabilities.any? { |capability| capability.is_type?(healthkit) }
-  abort("HealthKit capability was not enabled")
+unless bundle_id
+  payload = {
+    data: {
+      type: "bundleIds",
+      attributes: {
+        name: "Nocturne Health",
+        platform: "IOS",
+        identifier: identifier
+      }
+    }
+  }
+  status, body = request(:post, "/v1/bundleIds", token, body: payload)
+  abort("Unable to create bundle identifier (HTTP #{status})") unless status == 201
+  bundle_id = JSON.parse(body).fetch("data")
 end
 
-puts "Verified bundle identifier #{bundle_id.identifier} with HealthKit"
+bundle_id_value = bundle_id.fetch("id")
+status, body = request(:get, "/v1/bundleIds/#{bundle_id_value}/bundleIdCapabilities", token)
+abort("Unable to query capabilities (HTTP #{status})") unless status == 200
+capabilities = JSON.parse(body).fetch("data")
+
+unless capabilities.any? { |item| item.dig("attributes", "capabilityType") == "HEALTHKIT" }
+  payload = {
+    data: {
+      type: "bundleIdCapabilities",
+      attributes: {
+        capabilityType: "HEALTHKIT",
+        settings: []
+      },
+      relationships: {
+        bundleId: {
+          data: { type: "bundleIds", id: bundle_id_value }
+        }
+      }
+    }
+  }
+  status, _body = request(:post, "/v1/bundleIdCapabilities", token, body: payload)
+  abort("Unable to enable HealthKit (HTTP #{status})") unless status == 201
+end
+
+status, body = request(:get, "/v1/bundleIds/#{bundle_id_value}/bundleIdCapabilities", token)
+verified = status == 200 && JSON.parse(body).fetch("data").any? do |item|
+  item.dig("attributes", "capabilityType") == "HEALTHKIT"
+end
+abort("HealthKit verification failed") unless verified
+
+puts "Verified bundle identifier #{identifier} with HealthKit"
