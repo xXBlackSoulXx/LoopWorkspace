@@ -1,0 +1,21 @@
+name: Check Nocturne TestFlight Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: xcode-27
+    env:
+      FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+      FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+      FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install dependencies
+        run: bundle install
+      - name: Query App Store Connect
+        run: bundle exec ruby scripts/check_nocturne_builds.rb
