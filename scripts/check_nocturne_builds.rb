@@ -24,8 +24,24 @@ apps = get_json("/v1/apps?filter%5BbundleId%5D=#{bundle_identifier}", token).fet
 abort("App record missing") unless apps.length == 1
 app_id = apps.first.fetch("id")
 builds = get_json("/v1/builds?filter%5Bapp%5D=#{app_id}&sort=-uploadedDate&limit=10", token).fetch("data")
-abort("No TestFlight builds found") if builds.empty?
+uploads = get_json("/v1/apps/#{app_id}/buildUploads?limit=20", token).fetch("data")
 
+puts "BUILD_UPLOADS"
+uploads.each do |upload|
+  attributes = upload.fetch("attributes")
+  puts JSON.generate({
+    id: upload.fetch("id"),
+    cfBundleShortVersionString: attributes["cfBundleShortVersionString"],
+    cfBundleVersion: attributes["cfBundleVersion"],
+    state: attributes["state"],
+    createdDate: attributes["createdDate"],
+    uploadedDate: attributes["uploadedDate"],
+    platform: attributes["platform"]
+  })
+end
+
+abort("No builds or build uploads found") if builds.empty? && uploads.empty?
+puts "BUILDS"
 builds.each do |build|
   attributes = build.fetch("attributes")
   puts JSON.generate({
