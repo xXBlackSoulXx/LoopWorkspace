@@ -50,24 +50,13 @@ unless group
         feedbackEnabled: true
       },
       relationships: {
-        app: { data: { type: "apps", id: app_id } },
-        builds: { data: [{ type: "builds", id: build_id }] }
+        app: { data: { type: "apps", id: app_id } }
       }
     }
   }
   group = request(:post, "/v1/betaGroups", token, body: payload, expected: [201]).fetch("data")
 end
 group_id = group.fetch("id")
-
-# Keep the current valid build explicitly associated even when the group has
-# access to all builds, so the first installation is deterministic.
-request(
-  :post,
-  "/v1/betaGroups/#{group_id}/relationships/builds",
-  token,
-  body: { data: [{ type: "builds", id: build_id }] },
-  expected: [204]
-)
 
 testers = request(:get, "/v1/betaTesters?filter%5Bemail%5D=#{URI.encode_www_form_component(tester_email)}&limit=10", token).fetch("data")
 tester = testers.first
@@ -82,8 +71,7 @@ unless tester
         lastName: "Polenz"
       },
       relationships: {
-        betaGroups: { data: [{ type: "betaGroups", id: group_id }] },
-        builds: { data: [{ type: "builds", id: build_id }] }
+        betaGroups: { data: [{ type: "betaGroups", id: group_id }] }
       }
     }
   }
@@ -99,9 +87,7 @@ else
 end
 
 tester_ids = request(:get, "/v1/betaGroups/#{group_id}/relationships/betaTesters", token).fetch("data").map { |item| item.fetch("id") }
-build_ids = request(:get, "/v1/betaGroups/#{group_id}/relationships/builds", token).fetch("data").map { |item| item.fetch("id") }
 abort("Tester relationship missing") unless tester_ids.include?(tester.fetch("id"))
-abort("Build relationship missing") unless build_ids.include?(build_id)
 
 puts JSON.generate({
   group: group_name,
