@@ -15,5 +15,8 @@ jobs:
       FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
     steps:
       - uses: actions/checkout@v5
-      - run: bundle install
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
       - run: bundle exec ruby scripts/enable_nocturne_associated_domains.rb
