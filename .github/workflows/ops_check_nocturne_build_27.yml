@@ -1,0 +1,20 @@
+name: Verify Nocturne Build 27
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: xcode-27
+    env:
+      FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+      FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+      FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: bundle install
+      - name: Verify processed build and internal tester
+        run: bundle exec ruby scripts/verify_nocturne_build_27.rb
