@@ -77,13 +77,20 @@ unless tester
   }
   tester = request(:post, "/v1/betaTesters", token, body: payload, expected: [201]).fetch("data")
 else
-  request(
-    :post,
-    "/v1/betaGroups/#{group_id}/relationships/betaTesters",
-    token,
-    body: { data: [{ type: "betaTesters", id: tester.fetch("id") }] },
-    expected: [204]
-  )
+  payload = {
+    data: {
+      type: "betaTesters",
+      attributes: {
+        email: tester_email,
+        firstName: "Tom",
+        lastName: "Polenz"
+      },
+      relationships: {
+        betaGroups: { data: [{ type: "betaGroups", id: group_id }] }
+      }
+    }
+  }
+  tester = request(:post, "/v1/betaTesters", token, body: payload, expected: [201]).fetch("data")
 end
 
 tester_ids = request(:get, "/v1/betaGroups/#{group_id}/relationships/betaTesters", token).fetch("data").map { |item| item.fetch("id") }
