@@ -1,0 +1,21 @@
+name: Configure Nocturne Internal Testing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: xcode-27
+    env:
+      FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+      FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+      FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install dependencies
+        run: bundle install
+      - name: Configure internal TestFlight access
+        run: bundle exec ruby scripts/configure_nocturne_internal_testing.rb
