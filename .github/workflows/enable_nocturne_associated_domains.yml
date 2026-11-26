@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   enable:
-    runs-on: xcode-27
+    runs-on: ubuntu-latest
     env:
       FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
       FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
