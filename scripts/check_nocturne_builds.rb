@@ -52,3 +52,21 @@ builds.each do |build|
     expired: attributes["expired"]
   })
 end
+
+puts "BETA_GROUPS"
+groups = get_json("/v1/betaGroups?filter%5Bapp%5D=#{app_id}&limit=200", token).fetch("data")
+groups.each do |group|
+  puts JSON.generate({ id: group.fetch("id"), attributes: group.fetch("attributes") })
+end
+
+puts "BETA_TESTERS"
+testers = get_json("/v1/betaTesters?filter%5Bemail%5D=tom_polenz%40icloud.com&limit=20", token).fetch("data")
+testers.each do |tester|
+  puts JSON.generate({ id: tester.fetch("id"), attributes: tester.fetch("attributes") })
+end
+
+puts "APP_STORE_USERS"
+users = get_json("/v1/users?filter%5Busername%5D=tom_polenz%40icloud.com&limit=20", token).fetch("data")
+users.each do |user|
+  puts JSON.generate({ id: user.fetch("id"), attributes: user.fetch("attributes") })
+end
